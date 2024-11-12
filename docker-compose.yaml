@@ -1,6 +1,32 @@
 services:
 
   #-----------------------------------
+  #----   PGVector Database  ---------
+  #-----------------------------------
+
+  # This database is used for node and vector storage
+  pg-vector:
+    image: pgvector/pgvector:pg16
+    restart: always
+    volumes:
+      - ./.pg_data:/var/lib/postgresql/data
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    environment:
+      POSTGRES_PASSWORD: "${PG_PASSWORD:-admin}"
+      POSTGRES_USER: "${PG_USERNAME:-postgres}"
+      POSTGRES_DB: postgres
+    user: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "postgres"]
+      interval: 10s
+      retries: 3
+      start_period: 5s
+      timeout: 5s
+    profiles:
+      - ollama-api
+
+  #-----------------------------------
   #---- Private-GPT services ---------
   #-----------------------------------
 
@@ -30,6 +56,8 @@ services:
       - ollama-api
     depends_on:
       ollama:
+        condition: service_healthy
+      pg-vector:
         condition: service_healthy
 
   # Private-GPT service for the local mode
